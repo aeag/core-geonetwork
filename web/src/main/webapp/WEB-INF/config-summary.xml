@@ -109,13 +109,13 @@
           <!--<item facet="inspireTheme" sortBy="value" sortOrder="asc" max="35"/>
           <item facet="inspireThemeWithAc" sortBy="value" sortOrder="asc" max="35"/>-->
           <item facet="keyword" max="15"/>
-          <item facet="orgName" max="25"/>
+          <!-- <item facet="orgName" max="25"/> -->
           <item facet="createDateYear" sortBy="value" sortOrder="desc" max="40"/>
-          <item facet="format" max="15" sortBy="value" sortOrder="asc"/>
+          <!-- <item facet="format" max="15" sortBy="value" sortOrder="asc"/> -->
           <item facet="spatialRepresentationType" translator="codelist:gmd:MD_SpatialRepresentationTypeCode"/>
-          <item facet="maintenanceAndUpdateFrequency" translator="codelist:gmd:MD_MaintenanceFrequencyCode"/>
-          <item facet="status" translator="codelist:gmd:MD_ProgressCode"/>
-          <item facet="serviceType"/>
+          <!-- <item facet="maintenanceAndUpdateFrequency" translator="codelist:gmd:MD_MaintenanceFrequencyCode"/> -->
+          <!-- <item facet="status" translator="codelist:gmd:MD_ProgressCode"/> -->
+          <!-- <item facet="serviceType"/> -->
   <!--        <item facet="denominator" sortBy="numValue" sortOrder="desc"/>
           <item facet="resolution" sortBy="numValue" sortOrder="desc"/>-->
           <!--
