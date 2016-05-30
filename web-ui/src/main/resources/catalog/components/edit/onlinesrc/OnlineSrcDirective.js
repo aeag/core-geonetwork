@@ -233,6 +233,11 @@
                 }
               };
 
+              gnOnlinesrc.register('thumbnail', function() {
+                init();
+                $(scope.popupid).modal('show');
+              });
+
               // TODO: should be in gnEditor ?
               var getVersion = function() {
                 scope.metadataId = gnCurrentEdit.id;
@@ -327,9 +332,6 @@
                   });
                 }
               };
-
-              scope.$watch('mode', init);
-
             }
           };
         }])
@@ -364,7 +366,8 @@
         'gnCurrentEdit',
         '$rootScope',
         '$translate',
-        function(gnOnlinesrc, gnOwsCapabilities, gnEditor, gnCurrentEdit, $rootScope, $translate) {
+        function(gnOnlinesrc, gnOwsCapabilities, gnEditor,
+                 gnCurrentEdit, $rootScope, $translate) {
           return {
             restrict: 'A',
             templateUrl: '../../catalog/components/edit/onlinesrc/' +
@@ -386,19 +389,19 @@
                   // not multilingual {"fre":"#"}
                   if (Object.keys(scope.mdLangs).length > 1) {
                     scope.isMdMultilingual = true;
-                  scope.mdLang = gnCurrentEdit.mdLanguage;
+                    scope.mdLang = gnCurrentEdit.mdLanguage;
 
                     for (var p in scope.mdLangs) {
-                    var v = scope.mdLangs[p];
+                      var v = scope.mdLangs[p];
                       if (v.indexOf('#') == 0) {
-                      var l = v.substr(1);
+                        var l = v.substr(1);
                         if (!l) {
-                        l = scope.mdLang;
+                          l = scope.mdLang;
+                        }
+                        scope.mdLangs[p] = l;
                       }
-                      scope.mdLangs[p] = l;
                     }
                   }
-                }
                   else {
                     scope.isMdMultilingual = false;
                   }
@@ -501,8 +504,10 @@
               function handleError(reportError, error) {
                 if (reportError && error != undefined) {
                   var errorMsg = !isNaN(parseFloat(error)) && isFinite(error) ?
-                                    $translate('linkToServiceWithoutURLError') + ": " + error :
-                                    $translate(error);
+                      $translate('linkToServiceWithoutURLError') +
+                      ': ' +
+                      error :
+                      $translate(error);
                   $rootScope.$broadcast('StatusUpdated', {
                     title: $translate('error'),
                     timeout: 0,
@@ -521,15 +526,15 @@
                 if (scope.isWMSProtocol) {
                   gnOwsCapabilities.getWMSCapabilities(scope.params.url)
                         .then(function(capabilities) {
-                          scope.layers = [];
-                          angular.forEach(capabilities.layers, function(l) {
-                            if (angular.isDefined(l.Name)) {
-                              scope.layers.push(l);
-                            }
-                          });
-                        }).catch(function(error) {
-                          handleError(reportError, error);
+                        scope.layers = [];
+                        angular.forEach(capabilities.layers, function(l) {
+                          if (angular.isDefined(l.Name)) {
+                            scope.layers.push(l);
+                          }
                         });
+                      }).catch (function(error) {
+                        handleError(reportError, error);
+                      });
                     }
               };
 
@@ -733,7 +738,7 @@
    * </ul>
    * The directive contains a search form allowing one local selection.
    *
-   * On submit, the metadata is saved, the thumbnail is added,
+   * On submit, the metadata is saved, the link is added,
    * then the form and online resource list are refreshed.
    */
   .directive('gnLinkToMetadata', [
@@ -770,7 +775,6 @@
                         _schema: 'iso19110'
                       };
                       scope.btn = {
-                        icon: 'fa-table',
                         label: $translate('linkToFeatureCatalog')
                       };
                     }
@@ -779,7 +783,6 @@
                         hitsPerPage: 10
                       };
                       scope.btn = {
-                        icon: 'fa-sitemap',
                         label: $translate('linkToParent')
                       };
                     }
@@ -788,7 +791,6 @@
                         hitsPerPage: 10
                       };
                       scope.btn = {
-                        icon: 'fa-sitemap fa-rotate-180',
                         label: $translate('linkToSource')
                       };
                     }

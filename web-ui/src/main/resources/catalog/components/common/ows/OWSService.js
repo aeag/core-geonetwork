@@ -105,7 +105,7 @@
                       try {
                         defer.resolve(displayFileContent(data));
                       } catch (e) {
-                        defer.reject("capabilitiesParseError");
+                        defer.reject('capabilitiesParseError');
                       }
                     })
                   .error(function(data, status, headers, config) {
@@ -189,7 +189,7 @@
 
             for (var i = 0, len = layers.length; i < len; i++) {
               //check layername
-              if (name == layers[i].Name) {
+              if (name == layers[i].Name || name == layers[i].Identifier) {
                 layers[i].nameToUse = name;
                 return layers[i];
               }

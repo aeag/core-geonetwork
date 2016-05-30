@@ -338,7 +338,7 @@
            *
            * @param {Array} extent to transform
            */
-          getDcExtent: function(extent) {
+          getDcExtent: function(extent, location) {
             if (angular.isArray(extent)) {
               var dc = 'North ' + extent[3] + ', ' +
                   'South ' + extent[1] + ', ' +
@@ -658,8 +658,7 @@
                 }
               }
 
-              var vectorFormat = new ol.format.GML(
-                  {srsName_: getCapLayer.defaultSRS});
+              var vectorFormat = new ol.format.WFS();
 
               if (getCapLayer.outputFormats) {
                 $.each(getCapLayer.outputFormats.format,
@@ -674,7 +673,7 @@
 
               //TODO different strategy depending on the format
 
-              var vectorSource = new ol.source.ServerVector({
+              var vectorSource = new ol.source.Vector({
                 format: vectorFormat,
                 loader: function(extent, resolution, projection) {
                   if (this.loadingLayer) {
@@ -691,6 +690,7 @@
                         service: 'WFS',
                         request: 'GetFeature',
                         version: '1.1.0',
+                        srsName: map.getView().getProjection().getCode(),
                         bbox: extent.join(','),
                         typename: getCapLayer.name.prefix + ':' +
                                    getCapLayer.name.localPart})));
@@ -699,8 +699,9 @@
                     url: proxyUrl
                   })
                     .done(function(response) {
-                        vectorSource.addFeatures(vectorSource.
-                            readFeatures(response.firstElementChild));
+                        // TODO: Check WFS exception
+                        vectorSource.addFeatures(vectorFormat.
+                            readFeatures(response));
 
                         var extent = ol.extent.createEmpty();
                         var features = vectorSource.getFeatures();
@@ -726,7 +727,9 @@
               var extent = null;
 
               //Add spatial extent
-              if (layer.wgs84BoundingBox && layer.wgs84BoundingBox[0]) {
+              if (layer.wgs84BoundingBox && layer.wgs84BoundingBox[0] &&
+                  layer.wgs84BoundingBox[0].lowerCorner &&
+                  layer.wgs84BoundingBox[0].upperCorner) {
                 extent = ol.extent.boundingExtent(
                     [layer.wgs84BoundingBox[0].lowerCorner,
                      layer.wgs84BoundingBox[0].upperCorner]);
@@ -738,7 +741,7 @@
               }
 
               if (extent) {
-                map.getView().fitExtent(extent, map.getSize());
+                map.getView().fit(extent, map.getSize());
               }
 
               var layer = new ol.layer.Vector({
@@ -910,6 +913,36 @@
               defer.reject(o);
             });
             return defer.promise;
+          },
+
+          /**
+           * Call a WMS getCapabilities and create ol3 layers for all items.
+           * Add them to the map if `createOnly` is false;
+           *
+           * @param {ol.Map} map to add the layer
+           * @param {string} url of the service
+           * @param {string} name of the layer
+           * @param {boolean} createOnly or add it to the map
+           */
+          addWmsAllLayersFromCap: function(map, url, createOnly) {
+            var $this = this;
+
+            return gnOwsCapabilities.getWMSCapabilities(url).
+                then(function(capObj) {
+
+                  var createdLayers = [];
+
+                  var layers = capObj.layers || capObj.Layer;
+                  for (var i = 0, len = layers.length; i < len; i++) {
+                    var capL = layers[i];
+                    var olL = $this.createOlWMSFromCap(map, capL);
+                    if (!createOnly) {
+                      map.addLayer(olL);
+                    }
+                    createdLayers.push(olL);
+                  }
+                  return createdLayers;
+                });
           },
 
           /**

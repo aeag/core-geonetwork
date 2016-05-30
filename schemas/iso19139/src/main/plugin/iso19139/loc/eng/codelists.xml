@@ -183,7 +183,7 @@
 		<!-- - - - - - - - - - - - - - - - - - - - - - - - - -->
 	</codelist>
 	<!-- ==================================================== -->
-	<codelist name="gmd:CI_RoleCode">
+	<codelist name="gmd:CI_RoleCode" alias="roleCode">
 		<entry>
 			<code>resourceProvider</code>
 			<label>Resource provider</label>
@@ -292,7 +292,7 @@
 		<!-- - - - - - - - - - - - - - - - - - - - - - - - - -->
 	</codelist>
 	<!-- ==================================================== -->
-	<codelist name="gmd:DS_AssociationTypeCode">
+	<codelist name="gmd:DS_AssociationTypeCode" alias="associationType">
 		<entry>
 			<code>crossReference</code>
 			<label>Cross reference</label>
@@ -327,7 +327,7 @@
 		<!-- - - - - - - - - - - - - - - - - - - - - - - - - -->
 	</codelist>
 	<!-- ==================================================== -->
-	<codelist name="gmd:DS_InitiativeTypeCode">
+	<codelist name="gmd:DS_InitiativeTypeCode" alias="initiativeType">
 		<entry>
 			<code>campaign</code>
 			<label>Campaign</label>
@@ -2045,6 +2045,59 @@
 			<label>Input/output</label>
 		</entry>
 	</codelist>
+
+	<!-- INSPIRE SDS  ================================================== -->
+
+	<codelist name="SDS_category">
+            <entry>
+                <code>http://inspire.ec.europa.eu/metadata-codelist/Category/harmonised</code>
+                <label>harmonised</label>
+                <description>Harmonised</description>
+            </entry>
+            <entry>
+                <code>http://inspire.ec.europa.eu/metadata-codelist/Category/interoperable</code>
+                <label>interoperable</label>
+                <description>Interoperable</description>
+            </entry>
+            <entry>
+                <code>http://inspire.ec.europa.eu/metadata-codelist/Category/invocable</code>
+                <label>invocable</label>
+                <description>Invocable</description>
+            </entry>
+	</codelist>
+
+	<codelist name="SDS_DCP">
+            <entry>
+                <code>xml</code>
+                <label>XML</label>
+                <description>XML</description>
+            </entry>
+            <entry>
+                <code>corba</code>
+                <label>CORBA</label>
+                <description>CORBA</description>
+            </entry>
+            <entry>
+                <code>java</code>
+                <label>JAVA</label>
+                <description>JAVA</description>
+            </entry>
+            <entry>
+                <code>com</code>
+                <label>COM</label>
+                <description>COM</description>
+            </entry>
+            <entry>
+                <code>sql</code>
+                <label>SQL</label>
+                <description>SQL</description>
+            </entry>
+            <entry>
+                <code>webServices</code>
+                <label>Web Services</label>
+                <description>Web Services</description>
+            </entry>
+        </codelist>
 
   <codelist name="gco:nilReason">
     <entry>
