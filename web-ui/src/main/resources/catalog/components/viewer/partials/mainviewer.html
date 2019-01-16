@@ -1,7 +1,10 @@
 <div class="wrapper" data-ng-controller="gnViewerController">
 
   <div data-gn-alert-manager=""></div>
-  <div id="map" ngeo-map="map" class="map"></div>
+  <div id="map"
+       ngeo-map="map"
+       class="map"
+       gn-vector-feature-tool-tip="map"></div>
   <div gn-gfi="" map="map"></div>
   <div gn-localisation-input map="map"></div>
 
@@ -101,6 +104,10 @@
         <tab heading="{{'LayerKML' | translate}}"
              active="addLayerTabs.kml">
           <div gn-kml-import="" gn-kml-import-map="map"></div>
+        </tab>
+        <tab heading="{{'LayerESRI' | translate}}"
+             active="addLayerTabs.esri">
+          <div data-gn-esri-import="" data-gn-esri-import-map="map"></div>
         </tab>
       </tabset>
     </div>

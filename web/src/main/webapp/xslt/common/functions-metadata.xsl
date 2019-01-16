@@ -18,7 +18,7 @@
     <xsl:param name="metadata" as="node()"/>
     <xsl:param name="evaluatedNode" as="node()"/>
 
-    <xsl:variable name="nodeRef" select="$evaluatedNode/*/gn:element/@ref"/>
+    <xsl:variable name="nodeRef" select="$evaluatedNode/gn:element/@ref"/>
     <xsl:variable name="node" select="$metadata//*[gn:element/@ref = $nodeRef]"/>
 
     <!--<xsl:message>#getOriginalNode ==================</xsl:message>
@@ -40,7 +40,7 @@
   </xsl:function>
 
 
-  <!-- Return an element label taking care of the profil, 
+  <!-- Return an element label taking care of the profile, 
   the context (ie. parent element) or a complete xpath.
   -->
   <xsl:function name="gn-fn-metadata:getLabel" as="node()">
@@ -55,10 +55,13 @@
     Add try/catch block to log out when a label id duplicated
     in loc files. XSLv3 could be useful for that.
     -->
-    <!--<xsl:message>#<xsl:value-of select="$name"/></xsl:message>
-    <xsl:message>#<xsl:value-of select="$xpath"/></xsl:message>
-    <xsl:message>#<xsl:value-of select="$parent"/></xsl:message>-->
-    
+    <!--
+    <xsl:message>#gn-fn-metadata:getLabel</xsl:message>
+    <xsl:message>#Element name: <xsl:value-of select="$name"/></xsl:message>
+    <xsl:message>#XPath: <xsl:value-of select="$xpath"/></xsl:message>
+    <xsl:message>#Parent: <xsl:value-of select="$parent"/></xsl:message>
+    -->
+
     <xsl:variable name="escapedName">
       <xsl:choose>
         <xsl:when test="matches($name, '.*CHOICE_ELEMENT.*')">
@@ -72,8 +75,12 @@
     </xsl:variable>
     
     <!-- Name with context in current schema -->
-    <xsl:variable name="schemaLabelWithContext"
-      select="$labels/element[@name=$escapedName and (@context=$xpath or @context=$parent or @context=$parentIsoType)]"/>
+    <xsl:variable name="schemaLabelWithContextCollection"
+                  select="$labels/element[@name=$escapedName and (@context=$xpath or @context=$parent or @context=$parentIsoType)]"/>
+    <xsl:variable name="schemaLabelWithContext" select="$schemaLabelWithContextCollection[1]"/>
+    <xsl:if test="count($schemaLabelWithContextCollection) > 1">
+      <xsl:message>WARNING: gn-fn-metadata:getLabel | multiple labels found for element '<xsl:value-of select="$escapedName"/>' with context=('<xsl:value-of select="$xpath"/>' or '<xsl:value-of select="$parent"/>' or '<xsl:value-of select="$parentIsoType"/>') in schema <xsl:value-of select="$schema"/></xsl:message>
+    </xsl:if>
     
     <!-- Name in current schema -->
     <xsl:variable name="schemaLabel" select="$labels/element[@name=$escapedName and not(@context)]"/>
@@ -97,7 +104,7 @@
                 <xsl:value-of select="$escapedName"/>
               </label>
             </element>
-            <xsl:message>gn-fn-metadata:getLabel | missing translation in schema <xsl:value-of
+            <xsl:message>WARNING: gn-fn-metadata:getLabel | missing translation in schema <xsl:value-of
               select="$schema"/> for <xsl:value-of select="$name"/>.</xsl:message>
           </xsl:otherwise>
         </xsl:choose>
@@ -133,7 +140,7 @@
     <xsl:param name="codelists" as="node()"/>
     <xsl:copy-of select="gn-fn-metadata:getCodeListValues($schema, $name, $codelists, false())"/>
   </xsl:function>
-  
+
   <xsl:function name="gn-fn-metadata:getCodeListValues" as="node()">
     <xsl:param name="schema" as="xs:string"/>
     <xsl:param name="name" as="xs:string"/>
@@ -142,8 +149,15 @@
 
     <xsl:variable name="codelists" select="$codelists/codelist[@name=$name]"
       exclude-result-prefixes="#all"/>
-    
-    <!-- Conditional helpers which may define an xpath expression to evaluate 
+
+    <!--
+    <xsl:message>#gn-fn-metadata:getCodeListValues</xsl:message>
+    <xsl:message>#Schema: <xsl:value-of select="$schema"/> </xsl:message>
+    <xsl:message>#Element name: <xsl:value-of select="$name"/> </xsl:message>
+    <xsl:message>#Codelist found: <xsl:copy-of select="$codelists"/> </xsl:message>
+    -->
+
+    <!-- Conditional helpers which may define an xpath expression to evaluate
         if the xpath match. Check all codelists if one define an expression.
         If the expression return a node, this codelist will be returned. -->
     <xsl:variable name="conditionalCodelist">
@@ -279,11 +293,12 @@
     <xsl:param name="name" as="xs:string"/>
     <xsl:param name="context" as="xs:string?"/>
     <xsl:param name="xpath" as="xs:string?"/>
-    
-    <!-- Name with context in current schema -->
+
     <xsl:variable name="helper"
-      select="$labels/element[@name=$name and (@context=$xpath or @context=$context)]/helper"/>
-    
+                  select="if (string($xpath) or string($context))
+                          then $labels/element[@name=$name and (@context=$xpath or @context=$context)]/helper
+                          else $labels/element[@name=$name and not(string(@context))]/helper"/>
+
     <xsl:choose>
       <xsl:when test="$helper">
         <xsl:copy-of select="$helper" copy-namespaces="no"/>

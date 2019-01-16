@@ -2319,7 +2319,7 @@
 			Locator)</description>
 	</element>
 	<element name="gmd:protocol" context="gmd:CI_OnlineResource"
-		id="398">
+		id="398" alias="protocol">
 		<label>Protokoll</label>
 		<help />
 		<condition />
@@ -2712,9 +2712,6 @@
     </element>
     <element name="gmd:otherConstraints">
         <label>Andere Einschränkungen</label>
-    </element>
-    <element name="gmd:MD_LegalConstraints">
-        <label>Rechtliche Einschränkungen</label>
     </element>
     <element name="gmd:MD_LegalConstraints">
         <label>Rechtliche Einschränkungen</label>

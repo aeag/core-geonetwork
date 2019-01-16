@@ -27,6 +27,8 @@ import com.vividsolutions.jts.util.Assert;
 import jeeves.server.UserSession;
 import jeeves.server.sources.http.JeevesServlet;
 import jeeves.services.ReadWriteController;
+import org.apache.commons.lang.StringUtils;
+import org.fao.geonet.ApplicationContextHolder;
 import org.fao.geonet.constants.Params;
 import org.fao.geonet.domain.Address;
 import org.fao.geonet.domain.Group;
@@ -34,18 +36,24 @@ import org.fao.geonet.domain.Profile;
 import org.fao.geonet.domain.User;
 import org.fao.geonet.domain.UserGroup;
 import org.fao.geonet.domain.responses.OkResponse;
+import org.fao.geonet.kernel.DataManager;
 import org.fao.geonet.repository.GroupRepository;
 import org.fao.geonet.repository.UserGroupRepository;
 import org.fao.geonet.repository.UserRepository;
 import org.fao.geonet.repository.specification.UserGroupSpecs;
+import org.fao.geonet.repository.specification.UserSpecs;
 import org.fao.geonet.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.jpa.domain.Specifications;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import static org.fao.geonet.repository.specification.UserGroupSpecs.hasProfile;
+import static org.fao.geonet.repository.specification.UserGroupSpecs.hasUserId;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,14 +73,6 @@ import javax.servlet.http.HttpSession;
 @ReadWriteController
 public class Update {
 
-    @Autowired
-    private UserGroupRepository userGroupRepository;
-    @Autowired
-    private GroupRepository groupRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ApplicationContext applicationContext;
 
     @RequestMapping(value = "/{lang}/admin.user.resetpassword", produces = {
             MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE })
@@ -84,6 +84,7 @@ public class Update {
     ) throws Exception {
         Assert.equals(password, password2);
         new LoadCurrentUserInfo(session, id).invoke();
+        UserRepository userRepository = ApplicationContextHolder.get().getBean(UserRepository.class);
 
         User user = userRepository.findOne(id);
         setPassword(Params.Operation.RESETPW, password, user);
@@ -111,7 +112,8 @@ public class Update {
             @RequestParam(value = Params.COUNTRY, required = false) String country,
             @RequestParam(value = Params.EMAIL) String email,
             @RequestParam(value = Params.ORG, required = false) String organ,
-            @RequestParam(value = Params.KIND, required = false) String kind)
+            @RequestParam(value = Params.KIND, required = false) String kind,
+            @RequestParam(value = Params.ENABLED) Boolean enabled)
             throws Exception {
         if (id == null && operation.equalsIgnoreCase(Params.Operation.NEWUSER)) {
             id = "";
@@ -134,12 +136,46 @@ public class Update {
                 }
             }
         }
+        UserRepository userRepository = ApplicationContextHolder.get().getBean(UserRepository.class);
 
         if (profile == Profile.Administrator) {
-            groups.clear();
+            // Check at least 1 administrator is enabled
+            if (StringUtils.isNotEmpty(id) && (enabled != null) && (enabled.equals(Boolean.FALSE))) {
+                List<User> adminEnabledList = userRepository.findAll(
+                        Specifications.where(UserSpecs.hasProfile(Profile.Administrator)).and(UserSpecs.hasEnabled(true)));
+                if (adminEnabledList.size() == 1) {
+                    User adminUser = adminEnabledList.get(0);
+                    if (adminUser.getId() == Integer.parseInt(id)) {
+                        throw new IllegalArgumentException(
+                                "Trying to disable all administrator users is not allowed");
+                    }
+                }
+            }
         }
 
+
+        UserGroupRepository userGroupRepository = ApplicationContextHolder.get().getBean(UserGroupRepository.class);
+
         checkAccessRights(operation, id, username, myProfile, myUserId, groups, userGroupRepository);
+
+        //If it is a useradmin updating,
+        //maybe we don't know all the groups the user is part of
+        if(!myProfile.equals(Profile.Administrator) && !Params.Operation.NEWUSER.equalsIgnoreCase(operation)) {
+            List<Integer> myUserAdminGroups = userGroupRepository.findGroupIds(Specifications.where(
+                    hasProfile(myProfile)).and(hasUserId(Integer.valueOf(myUserId))));
+
+            List<UserGroup> usergroups =
+                    userGroupRepository.findAll(Specifications.where(
+                            hasUserId(Integer.parseInt(id))));
+
+            //keep unknown groups as is
+            for(UserGroup ug : usergroups) {
+                if(!myUserAdminGroups.contains(ug.getGroup().getId())) {
+                    groups.add(new GroupElem(ug.getProfile().name(),
+                            ug.getGroup().getId()));
+                }
+            }
+        }
 
         User user = getUser(userRepository, operation, id, username);
 
@@ -147,15 +183,17 @@ public class Update {
         if (operation.equalsIgnoreCase(Params.Operation.RESETPW)) {
             userRepository.save(user);
         } else {
-            updateOrSave(operation, username, surname, name, address, city, state, zip, country, email, organ, kind, profile,
-                    myProfile, groups, user);
+            updateOrSave(operation, username, surname, name, address, city, state, zip, country, email, organ, kind,
+                    enabled, profile, myProfile, groups, user);
         }
 
         return new OkResponse();
     }
 
-    public void updateOrSave(String operation, String username, String surname, String name, String address, String city, String state,
-                             String zip, String country, String email, String organ, String kind, Profile profile, Profile myProfile, List<GroupElem> groups, User user) throws Exception {
+    public void updateOrSave(String operation, String username, String surname, String name, String address,
+                             String city, String state, String zip, String country, String email,
+                             String organ, String kind, Boolean enabled, Profile profile,
+                             Profile myProfile, List<GroupElem> groups, User user) throws Exception {
         if (username != null) {
             user.setUsername(username);
         }
@@ -180,6 +218,10 @@ public class Update {
         }
         if (organ != null) {
             user.setOrganisation(organ);
+        }
+
+        if (enabled != null) {
+            user.setEnabled(enabled);
         }
 
         Address addressEntity;
@@ -211,8 +253,13 @@ public class Update {
         }
 
         if (email != null) {
-            user.getEmailAddresses().add(email);
+            String[] emails = email.indexOf("|") >= 0  ? email.split("|") : new String[]{email};
+            for (String mail : emails) {
+                user.getEmailAddresses().clear();
+                user.getEmailAddresses().add(mail);
+            }
         }
+        UserRepository userRepository = ApplicationContextHolder.get().getBean(UserRepository.class);
 
         // -- For adding new user
         if (operation.equals(Params.Operation.NEWUSER)
@@ -229,7 +276,7 @@ public class Update {
     public void setPassword(String operation, String password, User user) {
         if (password != null) {
             user.getSecurity().setPassword(
-                    PasswordUtil.encoder(applicationContext).encode(
+                    PasswordUtil.encoder(ApplicationContextHolder.get()).encode(
                             password));
         } else if (operation.equals(Params.Operation.RESETPW)
                    || operation.equals(Params.Operation.NEWUSER)) {
@@ -303,6 +350,8 @@ public class Update {
 
     private void setUserGroups(final User user, List<GroupElem> userGroups)
             throws Exception {
+        UserGroupRepository userGroupRepository = ApplicationContextHolder.get().getBean(UserGroupRepository.class);
+        GroupRepository groupRepository = ApplicationContextHolder.get().getBean(GroupRepository.class);
 
         Collection<UserGroup> all = userGroupRepository.findAll(UserGroupSpecs
                 .hasUserId(user.getId()));

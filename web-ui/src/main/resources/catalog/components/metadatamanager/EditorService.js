@@ -19,12 +19,11 @@
        '$translate',
        '$compile',
        'gnUrlUtils',
-       'gnNamespaces',
        'gnXmlTemplates',
        'gnHttp',
        'gnCurrentEdit',
        function($q, $http, $translate, $compile,
-               gnUrlUtils, gnNamespaces, gnXmlTemplates,
+               gnUrlUtils, gnXmlTemplates,
                gnHttp, gnCurrentEdit) {
 
          /**
@@ -110,7 +109,7 @@
            * This is required while switching tab for example. Update the tab
            * value in the form and trigger save to update the view.
            */
-           save: function(refreshForm, silent) {
+           save: function(refreshForm, silent, close) {
              var defer = $q.defer();
              var scope = this;
              if (gnCurrentEdit.saving) {
@@ -123,7 +122,8 @@
 
              gnCurrentEdit.working = true;
              $http.post(
-             refreshForm ? 'md.edit.save' : 'md.edit.saveonly',
+                 close ? 'md.edit.save.and.close' :
+                     (refreshForm ? 'md.edit.save' : 'md.edit.saveonly'),
              $(gnCurrentEdit.formId).serialize(),
              {
                headers: {'Content-Type':

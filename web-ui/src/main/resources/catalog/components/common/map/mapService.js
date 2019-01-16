@@ -338,7 +338,7 @@
            *
            * @param {Array} extent to transform
            */
-          getDcExtent: function(extent) {
+          getDcExtent: function(extent, location) {
             if (angular.isArray(extent)) {
               var dc = 'North ' + extent[3] + ', ' +
                   'South ' + extent[1] + ', ' +
@@ -400,6 +400,112 @@
             ngeoDecorateLayer(vector);
             vector.displayInLayerManager = true;
             map.getLayers().push(vector);
+          },
+
+          // Given only the url, it will show a dialog to select
+          // what layers do we want to add to the map
+          addOwsServiceToMap: function(url, type) {
+            // move to map
+            gnSearchLocation.setMap();
+            // open dialog for WMS
+            $rootScope.$broadcast('requestCapLoad' + type.toUpperCase(), url);
+          },
+
+          /**
+           * @ngdoc method
+           * @methodOf gn_map.service:gnMap
+           * @name gnMap#addEsriFToMap
+           *
+           * @description
+           * Add an ESRI REST feature layer to the map from a given source.
+           *
+           * @param {serviceUrl} url of the rest service
+           * @param {string} name of the service
+           * @param {string} id of the layer
+           * @param {string} server classification
+           * @param {ol.Map} map object
+           */
+          addEsriFToMap: function(serviceUrl, name, layer, serverType, map, label) {
+            var esrijsonFormat = new ol.format.EsriJSON();
+            
+            var vectorSource = new ol.source.Vector({
+              loader: function(extent, resolution, projection) {
+                var url = serviceUrl 
+                            + name
+                            + "/"
+                            + serverType
+                            + "/"
+                            + ((layer) ? layer + "/" : "")
+                            + 'query/?f=json&'
+                            + 'returnGeometry=true&spatialRel=esriSpatialRelIntersects'
+                            + '&geometry='
+                            + encodeURIComponent('{"xmin":' + extent[0]
+                                + ',"ymin":' + extent[1] + ',"xmax":'
+                                + extent[2] + ',"ymax":' + extent[3]
+                                + ',"spatialReference":{"wkid":102100}}')
+                            + '&geometryType=esriGeometryEnvelope&inSR=102100&outFields=*'
+                            + '&outSR=102100';
+                $.ajax({url: url, dataType: 'jsonp', success: function(response) {
+                  if (!response.error) {
+                    // dataProjection will be read from document
+                    var features = esrijsonFormat.readFeatures(response, {
+                      featureProjection: projection
+                    });
+                    if (features.length > 0) {
+                      vectorSource.addFeatures(features);
+                    }
+                  }
+                }});
+              },
+              strategy: ol.loadingstrategy.tile(ol.tilegrid.createXYZ({
+                tileSize: 512
+              }))
+            });
+
+            var vector = new ol.layer.Vector({
+              source: vectorSource,
+              label: label
+            });
+
+            ngeoDecorateLayer(vector);
+            vector.displayInLayerManager = true;
+            map.getLayers().push(vector);
+          },
+
+          /**
+           * @ngdoc method
+           * @methodOf gn_map.service:gnMap
+           * @name gnMap#addEsriIToMap
+           *
+           * @description
+           * Add an ESRI REST map server layer to the map from a given source.
+           *
+           * @param {serviceUrl} url of the rest service
+           * @param {string} name of the service
+           * @param {string} id of the layer
+           * @param {string} server classification
+           * @param {ol.Map} map object
+           */
+          addEsriIToMap: function(serviceUrl, name, layer, serverType, map, label) {
+            
+            var urlTemplate = serviceUrl + name
+                + "/" + serverType + "/" //  + ((layer)? layer + "/"  : "") 
+                + "tile/{z}/{y}/{x}";
+
+            var tileLayer = new ol.layer.Tile({
+              label: label,
+              source: new ol.source.XYZ({
+                tileUrlFunction: function(tileCoord) {
+                  return urlTemplate.replace('{z}', (tileCoord[0]).toString())
+                                    .replace('{x}', tileCoord[1].toString())
+                                    .replace('{y}', (-tileCoord[2] - 1).toString());
+                },
+                wrapX: true
+              })
+            });
+            
+            tileLayer.displayInLayerManager = true;
+            map.getLayers().push(tileLayer);
           },
 
           // Given only the url, it will show a dialog to select
@@ -658,8 +764,7 @@
                 }
               }
 
-              var vectorFormat = new ol.format.GML(
-                  {srsName_: getCapLayer.defaultSRS});
+              var vectorFormat = new ol.format.WFS();
 
               if (getCapLayer.outputFormats) {
                 $.each(getCapLayer.outputFormats.format,
@@ -674,7 +779,7 @@
 
               //TODO different strategy depending on the format
 
-              var vectorSource = new ol.source.ServerVector({
+              var vectorSource = new ol.source.Vector({
                 format: vectorFormat,
                 loader: function(extent, resolution, projection) {
                   if (this.loadingLayer) {
@@ -691,6 +796,7 @@
                         service: 'WFS',
                         request: 'GetFeature',
                         version: '1.1.0',
+                        srsName: map.getView().getProjection().getCode(),
                         bbox: extent.join(','),
                         typename: getCapLayer.name.prefix + ':' +
                                    getCapLayer.name.localPart})));
@@ -699,8 +805,9 @@
                     url: proxyUrl
                   })
                     .done(function(response) {
-                        vectorSource.addFeatures(vectorSource.
-                            readFeatures(response.firstElementChild));
+                        // TODO: Check WFS exception
+                        vectorSource.addFeatures(vectorFormat.
+                            readFeatures(response));
 
                         var extent = ol.extent.createEmpty();
                         var features = vectorSource.getFeatures();
@@ -726,7 +833,9 @@
               var extent = null;
 
               //Add spatial extent
-              if (layer.wgs84BoundingBox && layer.wgs84BoundingBox[0]) {
+              if (layer.wgs84BoundingBox && layer.wgs84BoundingBox[0] &&
+                  layer.wgs84BoundingBox[0].lowerCorner &&
+                  layer.wgs84BoundingBox[0].upperCorner) {
                 extent = ol.extent.boundingExtent(
                     [layer.wgs84BoundingBox[0].lowerCorner,
                      layer.wgs84BoundingBox[0].upperCorner]);
@@ -738,7 +847,7 @@
               }
 
               if (extent) {
-                map.getView().fitExtent(extent, map.getSize());
+                map.getView().fit(extent, map.getSize());
               }
 
               var layer = new ol.layer.Vector({
@@ -910,6 +1019,36 @@
               defer.reject(o);
             });
             return defer.promise;
+          },
+
+          /**
+           * Call a WMS getCapabilities and create ol3 layers for all items.
+           * Add them to the map if `createOnly` is false;
+           *
+           * @param {ol.Map} map to add the layer
+           * @param {string} url of the service
+           * @param {string} name of the layer
+           * @param {boolean} createOnly or add it to the map
+           */
+          addWmsAllLayersFromCap: function(map, url, createOnly) {
+            var $this = this;
+
+            return gnOwsCapabilities.getWMSCapabilities(url).
+                then(function(capObj) {
+
+                  var createdLayers = [];
+
+                  var layers = capObj.layers || capObj.Layer;
+                  for (var i = 0, len = layers.length; i < len; i++) {
+                    var capL = layers[i];
+                    var olL = $this.createOlWMSFromCap(map, capL);
+                    if (!createOnly) {
+                      map.addLayer(olL);
+                    }
+                    createdLayers.push(olL);
+                  }
+                  return createdLayers;
+                });
           },
 
           /**

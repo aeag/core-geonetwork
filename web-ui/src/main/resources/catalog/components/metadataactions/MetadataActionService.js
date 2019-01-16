@@ -129,6 +129,20 @@
       this.exportCSV = function() {
         window.open(gnHttp.getService('csv'), windowName, windowOption);
       };
+      this.validateMd = function(md, searchParams) {
+        if (md) {
+          return gnMetadataManager.validate(md.getId()).then(function() {
+            $rootScope.$broadcast('mdSelectNone');
+            $rootScope.$broadcast('resetSearch', searchParams);
+          });
+        }
+        else {
+          return callBatch('mdValidateBatch').then(function() {
+            $rootScope.$broadcast('mdSelectNone');
+            $rootScope.$broadcast('resetSearch', searchParams);
+          });
+        }
+      };
 
       this.deleteMd = function(md, searchParams) {
         if (md) {
@@ -246,7 +260,10 @@
               $translate('mdUnmodified') + '</dt><dd>' +
               data.data.unmodified + '</dd><dt>' +
               $translate('mdDisallowed') + '</dt><dd>' +
-              data.data.disallowed + '</dd></dl>';
+              data.data.disallowed + '</dd><dt>' +
+              $translate('mdNovalid') + '<dd>' +
+              data.data.novalid + '</dd>' +
+              '</dt></dl>';
 
           var success = 'success';
           if (md) {

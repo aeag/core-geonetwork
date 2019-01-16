@@ -29,7 +29,7 @@
    *
    * A body-level scope makes sense for example:
    *
-   *     <body ng-controller="GnCatController">
+   *  <body ng-controller="GnCatController">
    */
   module.controller('GnCatController', [
     '$scope', '$http', '$q', '$rootScope', '$translate',
@@ -46,11 +46,11 @@
       $scope.nodeId = tokens[4];
       // TODO : get list from server side
       $scope.langs = {'eng': 'en', 'dut': 'du', 'fre': 'fr',
-        'ger': 'ge', 'kor': 'ko', 'spa': 'es', 'cze': 'cz'};
+        'ger': 'de', 'kor': 'ko', 'spa': 'es', 'cat': 'ca', 'cze': 'cz', 'fin': 'fi'};
       // Lang names to be displayed in language selector
       $scope.langLabels = {'eng': 'English', 'dut': 'Nederlands',
         'fre': 'Français', 'ger': 'Deutsch', 'kor': '한국의',
-        'spa': 'Español', 'cze': 'Czech'};
+        'spa': 'Español', 'cat': 'Català', 'cze': 'Czech', 'fin': 'Suomeksi'};
       $scope.url = '';
       $scope.base = '../../catalog/';
       $scope.proxyUrl = gnGlobalSettings.proxyUrl;
@@ -92,8 +92,11 @@
 
       gnConfigService.load().then(function(c) {
         // Config loaded
-        //gnMap.importProj4js();
-        // TODO: make map proj load in mapService.config instead of here
+        if (proj4 && angular.isArray(gnConfig['map.proj4js'])) {
+          angular.forEach(gnConfig['map.proj4js'], function(item) {
+            proj4.defs(item.code, item.value);
+          });
+        }
       });
 
       /**
@@ -118,7 +121,7 @@
         // Retrieve site information
         // TODO: Add INSPIRE, harvester, ... information
         var catInfo = promiseStart.then(function(value) {
-          var url = $scope.url + 'info?_content_type=json&type=site&type=auth';
+          var url = $scope.url + 'info?_content_type=json&type=site&type=auth&type=config';
           return $http.get(url).
               success(function(data, status) {
                 $scope.info = data;
@@ -149,7 +152,7 @@
             return !this.isAnonymous();
           },
           canEditRecord: function(md) {
-            if (!md) {
+            if (!md || this['@authenticated'] == 'false') {
               return false;
             }
 
@@ -224,6 +227,10 @@
       $scope.clearStatusMessage = function() {
         $scope.status = null;
         $('.gn-info').hide();
+      };
+
+      $scope.allowPublishInvalidMd = function() {
+        return gnConfig['metadata.workflow.allowPublishInvalidMd'];
       };
 
       $scope.$on('StatusUpdated', function(event, status) {
